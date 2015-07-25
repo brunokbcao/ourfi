@@ -1,5 +1,6 @@
 package br.com.ourfi.ourfi;
 
+import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
@@ -112,6 +113,8 @@ public class OurFiActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_our_fi);
+
+        wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
     }
 
     @Override
