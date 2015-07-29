@@ -1,34 +1,36 @@
 package br.com.ourfi.ourfi;
 
+import android.app.Activity;
 import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import java.util.List;
 
-public class OurFiActivity extends ActionBarActivity {
 
-    private static final String TAG = "";
+public class OurFiActivity extends AppCompatActivity {
+
+    private static final String TAG = "ourfi";
     private WifiManager wifiManager;
     private String connectedSsidName;
+    private List<ScanResult> scanResults;
+    private int res;
 
-    public void connectToAP(String ssid, String passkey) {
+    public void connectToAP(String networkSSID, String networkPass) {
         Log.i(TAG, "* connectToAP");
 
         WifiConfiguration wifiConfiguration = new WifiConfiguration();
 
-        String networkSSID = ssid;
-        String networkPass = passkey;
-
         Log.d(TAG, "# password " + networkPass);
 
-        ScanResult[] scanResultList = null;
-        for (ScanResult result : scanResultList) {
+        for (ScanResult result : scanResults) {
             if (result.SSID.equals(networkSSID)) {
 
                 String securityMode = getScanResultSecurity(result);
@@ -73,12 +75,12 @@ public class OurFiActivity extends ActionBarActivity {
                 wifiConfiguration.allowedProtocols.set(WifiConfiguration.Protocol.RSN);
                 wifiConfiguration.allowedProtocols.set(WifiConfiguration.Protocol.WPA);
 
-                int res = wifiManager.addNetwork(wifiConfiguration);
+                res = wifiManager.addNetwork(wifiConfiguration);
                 Log.d(TAG, "### 2 ### add Network returned " + res);
 
                 wifiManager.enableNetwork(res, true);
 
-                boolean changeHappen = wifiManager.saveConfiguration();
+                /*boolean changeHappen = wifiManager.saveConfiguration();
 
                 if(res != -1 && changeHappen){
                     Log.d(TAG, "### Change happen");
@@ -87,7 +89,7 @@ public class OurFiActivity extends ActionBarActivity {
 
                 }else{
                     Log.d(TAG, "*** Change NOT happen");
-                }
+                }*/
 
                 wifiManager.setWifiEnabled(true);
             }
@@ -115,6 +117,26 @@ public class OurFiActivity extends ActionBarActivity {
         setContentView(R.layout.activity_our_fi);
 
         wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+        wifiManager.startScan();
+        scanResults = wifiManager.getScanResults();
+        for (ScanResult sc : scanResults) {
+            if (sc.SSID.equals("NT_INTERNA")) {
+                connectToAP("NT_INTERNA", "neurotechciti");
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        wifiManager.removeNetwork(res);
+        System.out.println("onDestroy");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        System.out.println("onPause");
     }
 
     @Override
