@@ -1,12 +1,12 @@
 package br.com.ourfi.ourfi;
 
-import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -22,6 +22,12 @@ public class OurFiActivity extends AppCompatActivity {
     private String connectedSsidName;
     private List<ScanResult> scanResults;
     private int res;
+
+    private LocationHandler locationHand;
+
+    public void showGPSCoords() {
+        locationHand = new LocationHandler(this);
+    }
 
     public void connectToAP(String networkSSID, String networkPass) {
         Log.i(TAG, "* connectToAP");
@@ -116,6 +122,8 @@ public class OurFiActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_our_fi);
 
+        this.showGPSCoords();
+
         wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         wifiManager.startScan();
         scanResults = wifiManager.getScanResults();
@@ -130,6 +138,7 @@ public class OurFiActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         wifiManager.removeNetwork(res);
+        locationHand.disable();
         System.out.println("onDestroy");
     }
 
@@ -137,6 +146,16 @@ public class OurFiActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         System.out.println("onPause");
+
+        NotificationManager notMan = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Notification not = new Notification.Builder(this)
+                .setContentTitle("OurFi")
+                .setContentText("Estamos Conetados :D")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setLights(0xFF7F00FF, 20, 20)
+                .build();
+        notMan.notify(1, not);
+
     }
 
     @Override
