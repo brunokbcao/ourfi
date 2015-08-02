@@ -1,8 +1,15 @@
 package br.com.ourfi.ourfi;
 
+import android.app.Fragment;
+import android.app.FragmentManager;
 import android.app.Notification;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
@@ -11,6 +18,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.LatLng;
 
 import java.util.List;
 
@@ -22,12 +35,6 @@ public class OurFiActivity extends AppCompatActivity {
     private String connectedSsidName;
     private List<ScanResult> scanResults;
     private int res;
-
-    private LocationHandler locationHand;
-
-    public void showGPSCoords() {
-        locationHand = new LocationHandler(this);
-    }
 
     public void connectToAP(String networkSSID, String networkPass) {
         Log.i(TAG, "* connectToAP");
@@ -122,8 +129,6 @@ public class OurFiActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_our_fi);
 
-        this.showGPSCoords();
-
         wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         wifiManager.startScan();
         scanResults = wifiManager.getScanResults();
@@ -132,14 +137,35 @@ public class OurFiActivity extends AppCompatActivity {
                 connectToAP("NT_INTERNA", "neurotechciti");
             }
         }
+
+        //Intent it = new Intent(this, MapsActivity.class);
+        //startActivity(it);
+        mapa();
+    }
+
+    private void mapa() {
+        MapFragment x = (MapFragment) getFragmentManager().findFragmentById(R.id.fragment);
+        GoogleMap mMap = x.getMap();
+
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        Location myLocation = locationManager.getLastKnownLocation(locationManager.getBestProvider(new Criteria(), true));
+        LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
+        mMap.setMyLocationEnabled(true);
+        mMap.setContentDescription("TESTE");
+        mMap.getUiSettings().setZoomControlsEnabled(false);
+        mMap.getUiSettings().setZoomGesturesEnabled(false);
+
+        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17.0f));
+        mMap.addCircle(new CircleOptions().center(latLng).radius(30).fillColor(0x2FFF0000).strokeWidth(1f).strokeColor(0xFFFF0000));
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         wifiManager.removeNetwork(res);
-        locationHand.disable();
         System.out.println("onDestroy");
+        NotificationManager notMan = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notMan.cancel(1);
     }
 
     @Override
@@ -148,14 +174,20 @@ public class OurFiActivity extends AppCompatActivity {
         System.out.println("onPause");
 
         NotificationManager notMan = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+        Intent notificationIntent = new Intent(this, getClass());
+        notificationIntent.setAction(Intent.ACTION_MAIN);
+        notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+
+        PendingIntent pi = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+
         Notification not = new Notification.Builder(this)
                 .setContentTitle("OurFi")
-                .setContentText("Estamos Conetados :D")
+                .setContentText("Estamos Conectados :D")
                 .setSmallIcon(R.mipmap.ic_launcher)
-                .setLights(0xFF7F00FF, 20, 20)
+                .setContentIntent(pi)
                 .build();
         notMan.notify(1, not);
-
     }
 
     @Override

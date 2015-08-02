@@ -44,6 +44,7 @@ public class LocationHandler implements LocationListener {
         this.lastLocation = location;
         Toast.makeText(context, "Location Changed: " + location.toString(), Toast.LENGTH_LONG).show();
         Intent maps = new Intent(context, MapsActivity.class);
+        maps.putExtra("location", location);
         context.startActivity(maps);
     }
 
