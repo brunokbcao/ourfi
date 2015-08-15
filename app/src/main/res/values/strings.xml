@@ -5,4 +5,6 @@
     <string name="action_settings">Settings</string>
     <string name="title_activity_maps">Map</string>
     <string name="button_share_wifi">Share WiFi</string>
+
+    <string name="SERVER_URL">http://localhost:8080/OurFi/</string>
 </resources>

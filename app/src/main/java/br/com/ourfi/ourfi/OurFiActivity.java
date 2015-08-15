@@ -4,11 +4,18 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.util.JsonReader;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.MapFragment;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 
 
 public class OurFiActivity extends AppCompatActivity implements LocationListener {
@@ -22,6 +29,23 @@ public class OurFiActivity extends AppCompatActivity implements LocationListener
         Utils.setupMap(this);
         Utils.enableLocation(this);
         Utils.setupNotification(this);
+
+        try {
+            String body = "{\"Authentication\":{\"Login\":\"bruno.silva@neurotech.com.br\",\"Password\":\"Ciab@2015\",\"Properties\":{\"Key\":\"PRODUTO\",\"Value\":\"DD\"}}}";
+            String test = ServiceUtils.httpRequest("http://wt9.cloudapp.net/riskpack-webservice/services/rest/accessControl/login", body);
+
+            JSONObject jo = new JSONObject(test);
+            Log.e("outfi", "Status: " + jo.getString("StatusCode"));
+            Log.e("outfi", "Token: " + jo.getJSONObject("Token").getString("Key"));
+
+            Toast.makeText(this, test, Toast.LENGTH_LONG);
+            Log.e("ourfi", test);
+        } catch (IOException e) {
+            Toast.makeText(this, e.toString(), Toast.LENGTH_LONG);
+            Log.e("outfi", e.toString());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
