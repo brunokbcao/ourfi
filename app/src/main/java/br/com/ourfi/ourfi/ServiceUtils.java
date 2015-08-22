@@ -124,3 +124,37 @@ public class ServiceUtils {
         return null;
     }
 }
+
+/*
+//Listando Wifis
+{
+	"Authentication": {
+		"User": "billao@gmail.com",
+		"Token": "asdfghjkl2345789",
+		"Mod": "Google"
+	},
+	"Location": {
+		"Lat": 0.0,
+		"Lon": -0.1,
+		"Alt": 10.3
+	}
+}
+
+//Registrando/Deregistrando Wifi
+{
+	"Authentication": {
+		"User": "billao@gmail.com",
+		"Token": "asdfghjkl2345789",
+		"Mod": "Google"
+	},
+	"Location": {
+		"Lat": 0.0,
+		"Lon": -0.1,
+		"Alt": 10.3
+	},
+	"WiFi": {
+		"SSID": "NT_INTERNA",
+		"Password": "passsss"
+	}
+}
+ */
