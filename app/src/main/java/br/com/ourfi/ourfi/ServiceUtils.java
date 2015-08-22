@@ -4,7 +4,10 @@ import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.os.AsyncTask;
 import android.util.JsonReader;
+import android.util.Log;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
@@ -26,18 +29,57 @@ import java.util.concurrent.ExecutionException;
  */
 public class ServiceUtils {
 
-    public ResultListWifis listWiFis() throws IOException {
-        final String urlPath = "listWifi/";
+    private static final String SERVER_URL = "http://192.168.1.104:8080/services/ourfi/";
 
-        ResultListWifis resultListWifis = new ResultListWifis();
+            /*
+//Listando Wifis
+{
+	"Authentication": {
 
-        URL url = new URL(R.string.SERVER_URL + urlPath);
+		"Mod": "Google"
+	},
+	"Location": {
+		"Lat": 0.0,
+		"Lon": -0.1,
+		"Alt": 10.3
+	}
+}
 
-        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+//Registrando/Deregistrando Wifi
+{
+	"Authentication": {
+		"User": "billao@gmail.com",
+		"Token": "asdfghjkl2345789",
+		"Mod": "Google"
+	},
+	"Location": {
+		"Lat": 0.0,
+		"Lon": -0.1,
+		"Alt": 10.3
+	},
+	"WiFi": {
+		"SSID": "NT_INTERNA",
+		"Password": "passsss"
+	}
+}
+ */
 
-        JsonReader jsr = new JsonReader(new InputStreamReader(urlConnection.getInputStream()));
+    public static ResultListWifis listWiFis(Location loc) {
+        final String urlPath = "list";
 
-        return resultListWifis;
+        try {
+            JSONObject req = createJsonListWifi("billao@gmail.com", "asdfghjkl2345789", loc);
+            String resp = httpRequest(SERVER_URL + urlPath, req.toString());
+
+            return new ResultListWifis(new JSONObject(resp));
+
+        } catch (Exception e) {
+            Log.e("ourfi", e.getMessage(), e);
+            ResultListWifis ret = new ResultListWifis();
+            ret.Success = false;
+            ret.Message = e.getMessage();
+            return ret;
+        }
     }
 
     public static class ResultListWifis extends Result {
@@ -48,21 +90,104 @@ public class ServiceUtils {
             WiFis = new ArrayList<Wifi>();
         }
 
+        public ResultListWifis(JSONObject json) throws JSONException {
+            super(json);
+            this.WiFis = new ArrayList<Wifi>();
+            JSONArray wifis = json.getJSONArray("Wifis");
+            if (wifis != null && wifis.length() > 0) {
+                for (int i = 0; i < wifis.length(); i++) {
+                    JSONObject jsWf = wifis.getJSONObject(i);
+                    Wifi wf = new Wifi(jsWf);
+                    this.WiFis.add(wf);
+                }
+            }
+        }
     }
 
     public static class Result {
-        Boolean success;
-        String message;
-        Date timestamp;
+        Boolean Success;
+        String Message;
+//        String Timestamp;
+
+        public Result() {}
+        public Result(JSONObject json) throws JSONException {
+            this.Success = json.getBoolean("Success");
+            this.Message = json.getString("Message");
+//            this.Timestamp = json.getString("Timestamp");
+        }
     }
 
     public static class Wifi {
-
         String SSID;
         String Password;
+        Location Location;
+
+        public Wifi() {}
+        public Wifi(JSONObject json) throws JSONException {
+            this.SSID = json.getString("SSID");
+            this.Password = json.getString("Password");
+            this.Location = new Location(json.getJSONObject("Location"));
+        }
+
+        public JSONObject toJson() throws JSONException {
+            JSONObject wf = new JSONObject();
+            wf.put("SSID", this.SSID);
+            wf.put("Password", this.Password);
+            wf.put("Location", this.Location.toJson());
+            return wf;
+        }
+    }
+
+    public static class Location {
         Double Latitude;
         Double Longitude;
+        Double Altitude;
 
+        public Location() {}
+
+        public Location(Double latitude, Double longitude, Double altitude) {
+            Latitude = latitude;
+            Longitude = longitude;
+            Altitude = altitude;
+        }
+
+        public Location (JSONObject json) throws JSONException {
+            this.Latitude = json.getDouble("Lat");
+            this.Longitude = json.getDouble("Lon");
+            this.Altitude = json.getDouble("Alt");
+        }
+
+        public JSONObject toJson() throws JSONException {
+            JSONObject loc = new JSONObject();
+            loc.put("Lat", this.Latitude);
+            loc.put("Lon", this.Longitude);
+            loc.put("Alt", this.Altitude);
+            return loc;
+        }
+    }
+
+    private static JSONObject createJsonListWifi(String user, String token, Location location) throws JSONException {
+        JSONObject ret = createJsonRequest(user, token);
+        ret.put("Location", location.toJson());
+        return ret;
+    }
+
+    private JSONObject createJsonRegisterWifi(String user, String token, Wifi wifi) throws JSONException {
+        JSONObject ret = createJsonListWifi(user, token, wifi.Location);
+        ret.put("WiFi", wifi.toJson());
+        return ret;
+    }
+
+    private static JSONObject createJsonRequest(String user, String token) throws JSONException {
+        JSONObject auth = new JSONObject();
+        auth.put("User", user);
+        auth.put("Token", token);
+        auth.put("Mod", "Google");
+
+        JSONObject ret = new JSONObject();
+        ret.put("Authentication", auth);
+
+        return ret;
     }
 
     public static String httpRequest (final String urlPath, final String body) throws IOException {
@@ -124,37 +249,3 @@ public class ServiceUtils {
         return null;
     }
 }
-
-/*
-//Listando Wifis
-{
-	"Authentication": {
-		"User": "billao@gmail.com",
-		"Token": "asdfghjkl2345789",
-		"Mod": "Google"
-	},
-	"Location": {
-		"Lat": 0.0,
-		"Lon": -0.1,
-		"Alt": 10.3
-	}
-}
-
-//Registrando/Deregistrando Wifi
-{
-	"Authentication": {
-		"User": "billao@gmail.com",
-		"Token": "asdfghjkl2345789",
-		"Mod": "Google"
-	},
-	"Location": {
-		"Lat": 0.0,
-		"Lon": -0.1,
-		"Alt": 10.3
-	},
-	"WiFi": {
-		"SSID": "NT_INTERNA",
-		"Password": "passsss"
-	}
-}
- */

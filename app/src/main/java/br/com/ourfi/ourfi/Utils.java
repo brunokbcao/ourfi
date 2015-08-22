@@ -146,34 +146,46 @@ public class Utils {
             Location myLocation = locationManager.getLastKnownLocation(locationManager.getBestProvider(new Criteria(), true));
             LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
             map.setMyLocationEnabled(true);
-            map.getUiSettings().setZoomControlsEnabled(false);
+//            map.getUiSettings().setZoomControlsEnabled(false);
+            map.getUiSettings().setZoomControlsEnabled(true);
             map.getUiSettings().setAllGesturesEnabled(false);
             map.getUiSettings().setMapToolbarEnabled(false);
 
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17.0f));
-            final Circle c =  map.addCircle(new CircleOptions().center(latLng).radius(30).fillColor(0x2FFF0000).strokeWidth(1f).strokeColor(0xFFFF0000));
-            map.addMarker(new MarkerOptions()
-                    .position(latLng)
-                    .alpha(0)
-                    .infoWindowAnchor(0.5f, 0.5f));
+//            final Circle c =  map.addCircle(new CircleOptions().center(latLng).radius(30).fillColor(0x2FFF0000).strokeWidth(1f).strokeColor(0xFFFF0000));
+//            map.addMarker(new MarkerOptions()
+//                    .position(latLng)
+//                    .alpha(0)
+//                    .infoWindowAnchor(0.5f, 0.5f));
+//            map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+//                @Override
+//                public boolean onMarkerClick(Marker marker) {
+//                    LatLng position = marker.getPosition();
+//                    marker.setTitle("Lista de redes nesta posição...");
+//                    marker.setSnippet("Rede A\nRede B");
+//                    marker.showInfoWindow();
+//                    System.out.println(position);
+//                    LatLng center = c.getCenter();
+//                    double radius = c.getRadius();
+//                    float[] distance = new float[1];
+//                    Location.distanceBetween(position.latitude, position.longitude, center.latitude, center.longitude, distance);
+//                    boolean clicked = distance[0] < radius;
+//                    System.out.println("Circulo clicado? = " + clicked);
+//                    return false;
+//                }
+//            });
 
-            map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-                @Override
-                public boolean onMarkerClick(Marker marker) {
-                    LatLng position = marker.getPosition();
-                    marker.setTitle("Lista de redes nesta posição...");
-                    marker.setSnippet("Rede A\nRede B");
-                    marker.showInfoWindow();
-                    System.out.println(position);
-                    LatLng center = c.getCenter();
-                    double radius = c.getRadius();
-                    float[] distance = new float[1];
-                    Location.distanceBetween(position.latitude, position.longitude, center.latitude, center.longitude, distance);
-                    boolean clicked = distance[0] < radius;
-                    System.out.println("Circulo clicado? = " + clicked);
-                    return false;
+            ServiceUtils.Location loc = new ServiceUtils.Location(myLocation.getLatitude(), myLocation.getLongitude(), myLocation.getAltitude());
+            ServiceUtils.ResultListWifis resultListWifis = ServiceUtils.listWiFis(loc);
+            if (resultListWifis.Success) {
+                for(ServiceUtils.Wifi wf : resultListWifis.WiFis) {
+                    map.addMarker(new MarkerOptions()
+                    .position(new LatLng(wf.Location.Latitude, wf.Location.Longitude))
+                    .alpha(1)
+                    .infoWindowAnchor(0.5f, 0.5f));
                 }
-            });
+            }
+
 
             map.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
 
