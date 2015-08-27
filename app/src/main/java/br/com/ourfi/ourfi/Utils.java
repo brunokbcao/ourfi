@@ -1,11 +1,17 @@
 package br.com.ourfi.ourfi;
 
+import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.location.Criteria;
 import android.location.Location;
@@ -16,9 +22,17 @@ import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Looper;
+import android.text.InputType;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
@@ -49,6 +63,8 @@ public class Utils {
 
     private static int notificationId;
     private static int networkId;
+    private static String userEmail;
+    private static Location lastKnownLocation;
 
     public static void initServices(Context context) {
         wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
@@ -140,18 +156,76 @@ public class Utils {
         }
     }
 
-    public static void setupMap(final Activity context) {
-        if (locationManager != null) {
-            GoogleMap map = ((MapFragment) context.getFragmentManager().findFragmentById(R.id.fragment)).getMap();
-            Location myLocation = locationManager.getLastKnownLocation(locationManager.getBestProvider(new Criteria(), true));
-            LatLng latLng = new LatLng(myLocation.getLatitude(), myLocation.getLongitude());
-            map.setMyLocationEnabled(true);
-//            map.getUiSettings().setZoomControlsEnabled(false);
-            map.getUiSettings().setZoomControlsEnabled(true);
-            map.getUiSettings().setAllGesturesEnabled(false);
-            map.getUiSettings().setMapToolbarEnabled(false);
+    private static GoogleMap map = null;
 
+    public static void setupMap(final Activity context, final Location location) {
+        if (locationManager != null) {
+            lastKnownLocation = location;
+            if (map == null) {
+                map = ((MapFragment) context.getFragmentManager().findFragmentById(R.id.fragment)).getMap();
+                map.setMyLocationEnabled(true);
+                map.getUiSettings().setAllGesturesEnabled(false);
+                map.getUiSettings().setZoomControlsEnabled(false);
+                map.getUiSettings().setZoomGesturesEnabled(true);
+                map.getUiSettings().setMapToolbarEnabled(false);
+                map.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+                    @Override
+                    public View getInfoWindow(Marker marker) {
+                        return null;
+                    }
+
+                    @Override
+                    public View getInfoContents(Marker marker) {
+                        TextView info = new TextView(context);
+                        info.setTextColor(Color.DKGRAY);
+                        info.setText(marker.getTitle());
+                        return info;
+                    }
+                });
+
+                map.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+                    @Override
+                    public boolean onMyLocationButtonClick() {
+                        ServiceUtils.Location loc = new ServiceUtils.Location(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), lastKnownLocation.getAltitude());
+                        ServiceUtils.ResultListWifis resultListWifis = ServiceUtils.listWiFis(userEmail, loc);
+                        if (resultListWifis.Success) {
+                            for (ServiceUtils.Wifi wf : resultListWifis.WiFis) {
+                                map.addMarker(new MarkerOptions()
+                                        .position(new LatLng(wf.Location.Latitude, wf.Location.Longitude))
+                                        .alpha(1)
+                                        .title(wf.SSID)
+                                        .snippet(wf.Password)
+                                        .infoWindowAnchor(0.5f, 0.5f));
+                            }
+                        }
+                        return false;
+                    }
+                });
+
+                map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+                    @Override
+                    public boolean onMarkerClick(Marker marker) {
+                        Button b = (Button) context.findViewById(R.id.buttonWifi);
+                        b.setText(context.getString(R.string.str_button_connect_wifi));
+                        b.setOnClickListener(Utils.createClickListener(context, marker.getTitle(), marker.getSnippet()));
+                        return false;
+                    }
+                });
+
+                map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+                    @Override
+                    public void onMapClick(LatLng latLng) {
+                        Button b = (Button) context.findViewById(R.id.buttonWifi);
+                        b.setText(context.getString(R.string.str_button_share_wifi));
+                        b.setOnClickListener(Utils.createClickListener(context, null, null));
+                    }
+                });
+            }
+
+            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17.0f));
+
+
 //            final Circle c =  map.addCircle(new CircleOptions().center(latLng).radius(30).fillColor(0x2FFF0000).strokeWidth(1f).strokeColor(0xFFFF0000));
 //            map.addMarker(new MarkerOptions()
 //                    .position(latLng)
@@ -175,42 +249,49 @@ public class Utils {
 //                }
 //            });
 
-            ServiceUtils.Location loc = new ServiceUtils.Location(myLocation.getLatitude(), myLocation.getLongitude(), myLocation.getAltitude());
-            ServiceUtils.ResultListWifis resultListWifis = ServiceUtils.listWiFis(loc);
-            if (resultListWifis.Success) {
-                for(ServiceUtils.Wifi wf : resultListWifis.WiFis) {
-                    map.addMarker(new MarkerOptions()
-                    .position(new LatLng(wf.Location.Latitude, wf.Location.Longitude))
-                    .alpha(1)
-                    .infoWindowAnchor(0.5f, 0.5f));
+            /*
+            */
+        }
+    }
+
+    public static View.OnClickListener createClickListener(final Context context, final String SSID, final String Password) {
+        return new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                if (SSID == null && Password == null) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                    builder.setTitle("Title");
+
+// Set up the input
+                    final EditText input = new EditText(context);
+// Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+                    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    builder.setView(input);
+
+// Set up the buttons
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String m_Text = input.getText().toString();
+                            Toast.makeText(context, m_Text, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.cancel();
+                        }
+                    });
+
+                    builder.show();
+
+                } else {
+                    networkId = connectToAP(SSID, Password);
+                    Toast.makeText(context, "Conectado a rede " + SSID + " com status " + networkId, Toast.LENGTH_LONG).show();
                 }
             }
-
-
-            map.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
-
-                @Override
-                public View getInfoWindow(Marker arg0) {
-                    return null;
-                }
-
-                @Override
-                public View getInfoContents(Marker marker) {
-                    TextView info = new TextView(context);
-                    info.setTextColor(Color.DKGRAY);
-                    info.setText(marker.getSnippet());
-                    return info;
-                }
-            });
-
-            map.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
-                @Override
-                public boolean onMyLocationButtonClick() {
-                    System.out.println("Aproveitar para atualizar as redes ao meu redor...");
-                    return false;
-                }
-            });
-        }
+        };
     }
 
     public static int setupNotification(Context context) {
@@ -234,6 +315,47 @@ public class Utils {
             notificationManager.notify(notificationId, not);
         }
         return notificationId;
+    }
+
+    public static void setupUserAccount(Context context) {
+        final SharedPreferences pref = context.getSharedPreferences("AppPref", Context.MODE_PRIVATE);
+        userEmail = pref.getString("Email", null);
+        if (userEmail == null) {
+            /* Pega a lista de contas cadastradas no aparelho */
+            AccountManager mAccountManager = AccountManager.get(context);
+            Account[] accounts = mAccountManager.getAccountsByType(GoogleAuthUtil.GOOGLE_ACCOUNT_TYPE);
+            final String[] names = new String[accounts.length];
+            for (int i = 0; i < names.length; i++) {
+                names[i] = accounts[i].name;
+            }
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<String>(context, android.R.layout.simple_list_item_1, names);
+
+            if (names.length != 0) {
+                final Dialog accountDialog = new Dialog(context);
+                accountDialog.setCanceledOnTouchOutside(false);
+                accountDialog.setContentView(R.layout.accounts_dialog);
+                accountDialog.setTitle("Select Google Account");
+                ListView list = (ListView) accountDialog.findViewById(R.id.list);
+
+                list.setAdapter(adapter);
+                list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view,
+                                            int position, long id) {
+                        accountDialog.cancel();
+                        userEmail = names[position];
+
+                        SharedPreferences.Editor edit = pref.edit();
+                        edit.putString("Email", names[position]);
+                        edit.commit();
+                    }
+                });
+                accountDialog.show();
+            } else {
+                userEmail = "anonymous";
+            }
+        }
     }
 
     public static void finish(Context context) {

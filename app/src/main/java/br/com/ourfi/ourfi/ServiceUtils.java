@@ -64,17 +64,40 @@ public class ServiceUtils {
 }
  */
 
-    public static ResultListWifis listWiFis(Location loc) {
+    public static ResultListWifis listWiFis(String username, Location loc) {
         final String urlPath = "list";
 
         try {
-            JSONObject req = createJsonListWifi("billao@gmail.com", "asdfghjkl2345789", loc);
+            JSONObject req = createJsonListWifi(username, "staticPassword", loc);
             String resp = httpRequest(SERVER_URL + urlPath, req.toString());
+            if (resp == null) {
+                //stub
 
+                ResultListWifis ret = new ResultListWifis();
+                ret.Message = "OK";
+                ret.Success = true;
+                ret.WiFis = new ArrayList<Wifi>();
+                {
+                    Wifi wifi = new Wifi();
+                    wifi.SSID = "NT_INTERNA";
+                    wifi.Password = "neurotechciti";
+                    wifi.Location = loc;
+                    ret.WiFis.add(wifi);
+                }
+                {
+                    Wifi wifi = new Wifi();
+                    wifi.SSID = "ConectaRecife";
+                    wifi.Password = null;
+                    wifi.Location = new Location();
+                    wifi.Location.Latitude = -8.064287;
+                    wifi.Location.Longitude = -34.872899;
+                    wifi.Location.Altitude = loc.Altitude;
+                    ret.WiFis.add(wifi);
+                }
+                return ret;
+            }
             return new ResultListWifis(new JSONObject(resp));
-
         } catch (Exception e) {
-            Log.e("ourfi", e.getMessage(), e);
             ResultListWifis ret = new ResultListWifis();
             ret.Success = false;
             ret.Message = e.getMessage();
@@ -191,8 +214,6 @@ public class ServiceUtils {
     }
 
     public static String httpRequest (final String urlPath, final String body) throws IOException {
-
-
         AsyncTask<String, Void, String> asyncTask = new AsyncTask<String, Void, String>() {
             @Override
             protected String doInBackground(String... params) {
@@ -205,6 +226,8 @@ public class ServiceUtils {
                     if (body != null && !body.isEmpty()) {
                         urlConnection.setDoOutput(true);
                         urlConnection.setRequestMethod("POST");
+                        urlConnection.setConnectTimeout(3000);
+                        urlConnection.setReadTimeout(10000);
                         urlConnection.setRequestProperty("Content-Type", "application/json;charset=utf-8");
                         byte[] bytes = body.getBytes();
                         urlConnection.setFixedLengthStreamingMode(bytes.length);
@@ -231,9 +254,14 @@ public class ServiceUtils {
                     buffer.flush();
                     return new String(buffer.toByteArray());
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    //
                 }
                 return null;
+            }
+
+            @Override
+            protected void onPostExecute(String s) {
+                super.onPostExecute(s);
             }
         };
 

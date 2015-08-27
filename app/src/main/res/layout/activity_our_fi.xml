@@ -14,7 +14,7 @@
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/button_share_wifi"
-        android:id="@+id/buttonShareWifi"
+        android:text="@string/str_button_share_wifi"
+        android:id="@+id/buttonWifi"
         android:layout_gravity="center_horizontal|bottom" />
 </FrameLayout>
