@@ -31,69 +31,18 @@ public class ServiceUtils {
 
     private static final String SERVER_URL = "http://192.168.1.104:8080/services/ourfi/";
 
-            /*
-//Listando Wifis
-{
-	"Authentication": {
-
-		"Mod": "Google"
-	},
-	"Location": {
-		"Lat": 0.0,
-		"Lon": -0.1,
-		"Alt": 10.3
-	}
-}
-
-//Registrando/Deregistrando Wifi
-{
-	"Authentication": {
-		"User": "billao@gmail.com",
-		"Token": "asdfghjkl2345789",
-		"Mod": "Google"
-	},
-	"Location": {
-		"Lat": 0.0,
-		"Lon": -0.1,
-		"Alt": 10.3
-	},
-	"WiFi": {
-		"SSID": "NT_INTERNA",
-		"Password": "passsss"
-	}
-}
- */
-
     public static ResultListWifis listWiFis(String username, Location loc) {
         final String urlPath = "list";
 
         try {
             JSONObject req = createJsonListWifi(username, "staticPassword", loc);
             String resp = httpRequest(SERVER_URL + urlPath, req.toString());
+            System.out.println("listWifis: " + resp);
             if (resp == null) {
-                //stub
-
                 ResultListWifis ret = new ResultListWifis();
                 ret.Message = "OK";
                 ret.Success = true;
                 ret.WiFis = new ArrayList<Wifi>();
-                {
-                    Wifi wifi = new Wifi();
-                    wifi.SSID = "NT_INTERNA";
-                    wifi.Password = "neurotechciti";
-                    wifi.Location = loc;
-                    ret.WiFis.add(wifi);
-                }
-                {
-                    Wifi wifi = new Wifi();
-                    wifi.SSID = "ConectaRecife";
-                    wifi.Password = null;
-                    wifi.Location = new Location();
-                    wifi.Location.Latitude = -8.064287;
-                    wifi.Location.Longitude = -34.872899;
-                    wifi.Location.Altitude = loc.Altitude;
-                    ret.WiFis.add(wifi);
-                }
                 return ret;
             }
             return new ResultListWifis(new JSONObject(resp));

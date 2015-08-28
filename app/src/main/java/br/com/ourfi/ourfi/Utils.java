@@ -188,6 +188,7 @@ public class Utils {
                     public boolean onMyLocationButtonClick() {
                         ServiceUtils.Location loc = new ServiceUtils.Location(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude(), lastKnownLocation.getAltitude());
                         ServiceUtils.ResultListWifis resultListWifis = ServiceUtils.listWiFis(userEmail, loc);
+                        map.clear();
                         if (resultListWifis.Success) {
                             for (ServiceUtils.Wifi wf : resultListWifis.WiFis) {
                                 map.addMarker(new MarkerOptions()
