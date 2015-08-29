@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutionException;
  */
 public class ServiceUtils {
 
-    private static final String SERVER_URL = "http://192.168.1.104:8080/services/ourfi/";
+    private static final String SERVER_URL = "http://45.55.213.204:8080/ourfi-server/services/ourfi/";
 
     public static ResultListWifis listWiFis(String username, Location loc) {
         final String urlPath = "list";
@@ -40,14 +40,59 @@ public class ServiceUtils {
             System.out.println("listWifis: " + resp);
             if (resp == null) {
                 ResultListWifis ret = new ResultListWifis();
-                ret.Message = "OK";
-                ret.Success = true;
+                ret.Message = "ERRO DE CONEXÃO COM O SERVIDOR";
+                ret.Success = false;
                 ret.WiFis = new ArrayList<Wifi>();
                 return ret;
             }
             return new ResultListWifis(new JSONObject(resp));
         } catch (Exception e) {
             ResultListWifis ret = new ResultListWifis();
+            ret.Success = false;
+            ret.Message = e.getMessage();
+            ret.WiFis = new ArrayList<Wifi>();
+            return ret;
+        }
+    }
+
+    public static Result shareWiFi(String username, Wifi wifi) {
+        final String urlPath = "add";
+
+        try {
+            JSONObject req = createJsonRegisterWifi(username, "staticPassword", wifi);
+            String resp = httpRequest(SERVER_URL + urlPath, req.toString());
+            System.out.println("registerWifi: " + resp);
+            if (resp == null) {
+                Result ret = new Result();
+                ret.Message = "ERRO DE CONEXÃO COM O SERVIDOR";
+                ret.Success = false;
+                return ret;
+            }
+            return new Result(new JSONObject(resp));
+        } catch (Exception e) {
+            Result ret = new Result();
+            ret.Success = false;
+            ret.Message = e.getMessage();
+            return ret;
+        }
+    }
+
+    public static Result removeWiFi(String username, Wifi wifi) {
+        final String urlPath = "remove";
+
+        try {
+            JSONObject req = createJsonRegisterWifi(username, "staticPassword", wifi);
+            String resp = httpRequest(SERVER_URL + urlPath, req.toString());
+            System.out.println("unregisterWifi: " + resp);
+            if (resp == null) {
+                Result ret = new Result();
+                ret.Message = "ERRO DE CONEXÃO COM O SERVIDOR";
+                ret.Success = false;
+                return ret;
+            }
+            return new Result(new JSONObject(resp));
+        } catch (Exception e) {
+            Result ret = new Result();
             ret.Success = false;
             ret.Message = e.getMessage();
             return ret;
@@ -144,7 +189,7 @@ public class ServiceUtils {
         return ret;
     }
 
-    private JSONObject createJsonRegisterWifi(String user, String token, Wifi wifi) throws JSONException {
+    private static JSONObject createJsonRegisterWifi(String user, String token, Wifi wifi) throws JSONException {
         JSONObject ret = createJsonListWifi(user, token, wifi.Location);
         ret.put("WiFi", wifi.toJson());
         return ret;
