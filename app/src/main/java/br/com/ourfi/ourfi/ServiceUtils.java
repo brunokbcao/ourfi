@@ -148,9 +148,9 @@ public class ServiceUtils {
 
         public JSONObject toJson() throws JSONException {
             JSONObject wf = new JSONObject();
+            wf.put("Location", this.Location.toJson());
             wf.put("SSID", this.SSID);
             wf.put("Password", this.Password);
-            wf.put("Location", this.Location.toJson());
             return wf;
         }
     }
@@ -190,8 +190,8 @@ public class ServiceUtils {
     }
 
     private static JSONObject createJsonRegisterWifi(String user, String token, Wifi wifi) throws JSONException {
-        JSONObject ret = createJsonListWifi(user, token, wifi.Location);
-        ret.put("WiFi", wifi.toJson());
+        JSONObject ret = createJsonRequest(user, token);
+        ret.put("Wifi", wifi.toJson());
         return ret;
     }
 
@@ -208,6 +208,8 @@ public class ServiceUtils {
     }
 
     public static String httpRequest (final String urlPath, final String body) throws IOException {
+        System.out.println("SERVICES Serviço:" + urlPath);
+        System.out.println("SERVICES Body:" + body);
         AsyncTask<String, Void, String> asyncTask = new AsyncTask<String, Void, String>() {
             @Override
             protected String doInBackground(String... params) {

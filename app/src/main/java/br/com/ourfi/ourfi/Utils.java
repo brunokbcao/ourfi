@@ -18,10 +18,12 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
 import android.os.Looper;
+import android.support.v4.app.NotificationCompat;
 import android.text.InputType;
 import android.view.View;
 import android.widget.AdapterView;
@@ -36,21 +38,12 @@ import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
-import com.google.android.gms.maps.model.Circle;
-import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 /**
  * Classe que conterá os métodos utilitários que precisarmos
@@ -80,7 +73,7 @@ public class Utils {
         return new ArrayList<>();
     }
 
-    public static int connectToAP(String networkSSID, String networkPass) {
+    public static int connectToAP(String networkSSID, String networkPass, boolean permanent) {
         int res = -1;
 
         WifiConfiguration wifiConfiguration = new WifiConfiguration();
@@ -121,6 +114,9 @@ public class Utils {
                 res = wifiManager.addNetwork(wifiConfiguration);
                 wifiManager.enableNetwork(res, true);
                 wifiManager.setWifiEnabled(true);
+                if (res > 0 && permanent) {
+                    wifiManager.saveConfiguration();
+                }
             }
         }
         return res;
@@ -225,33 +221,6 @@ public class Utils {
 
             LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 17.0f));
-
-
-//            final Circle c =  map.addCircle(new CircleOptions().center(latLng).radius(30).fillColor(0x2FFF0000).strokeWidth(1f).strokeColor(0xFFFF0000));
-//            map.addMarker(new MarkerOptions()
-//                    .position(latLng)
-//                    .alpha(0)
-//                    .infoWindowAnchor(0.5f, 0.5f));
-//            map.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
-//                @Override
-//                public boolean onMarkerClick(Marker marker) {
-//                    LatLng position = marker.getPosition();
-//                    marker.setTitle("Lista de redes nesta posição...");
-//                    marker.setSnippet("Rede A\nRede B");
-//                    marker.showInfoWindow();
-//                    System.out.println(position);
-//                    LatLng center = c.getCenter();
-//                    double radius = c.getRadius();
-//                    float[] distance = new float[1];
-//                    Location.distanceBetween(position.latitude, position.longitude, center.latitude, center.longitude, distance);
-//                    boolean clicked = distance[0] < radius;
-//                    System.out.println("Circulo clicado? = " + clicked);
-//                    return false;
-//                }
-//            });
-
-            /*
-            */
         }
     }
 
@@ -261,35 +230,67 @@ public class Utils {
             @Override
             public void onClick(View v) {
                 if (SSID == null && Password == null) {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(context);
-                    builder.setTitle("Title");
+                    final WifiInfo connectionInfo = wifiManager.getConnectionInfo();
+                    if (connectionInfo.getSupplicantState() != SupplicantState.COMPLETED) {
+                        Toast.makeText(context, "Você não está conectado a uma rede WiFi!", Toast.LENGTH_LONG).show();
+                    } else {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                        final String ssid = connectionInfo.getSSID().replaceAll("\"", "");
+                        builder.setTitle("Insira a senha para a WiFi " + ssid);
+                        final EditText input = new EditText(context);
+                        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                        builder.setView(input);
+                        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                String editText = input.getText().toString();
 
-// Set up the input
-                    final EditText input = new EditText(context);
-// Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
-                    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                    builder.setView(input);
+                                networkId = connectToAP(ssid, editText, true);
+                                if (networkId < 0) {
+                                    dialog.cancel();
+                                    Toast.makeText(context, "Senha inválida, tente novamente!", Toast.LENGTH_LONG).show();
+                                    return;
+                                }
 
-// Set up the buttons
-                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            String m_Text = input.getText().toString();
-                            Toast.makeText(context, m_Text, Toast.LENGTH_LONG).show();
-                        }
-                    });
-                    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.cancel();
-                        }
-                    });
+                                ServiceUtils.Wifi wifi = new ServiceUtils.Wifi();
+                                wifi.Location = new ServiceUtils.Location();
+                                wifi.Location.Latitude = lastKnownLocation.getLatitude();
+                                wifi.Location.Longitude = lastKnownLocation.getLongitude();
+                                wifi.Location.Altitude = lastKnownLocation.getAltitude();
+                                wifi.SSID = ssid;
+                                wifi.Password = editText.isEmpty() ? "" : editText;
 
-                    builder.show();
+                                ServiceUtils.Result result = ServiceUtils.shareWiFi(userEmail, wifi);
+                                Toast.makeText(context, result.Message, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.cancel();
+                            }
+                        });
 
+                        builder.show();
+                    }
                 } else {
-                    networkId = connectToAP(SSID, Password);
-                    Toast.makeText(context, "Conectado a rede " + SSID + " com status " + networkId, Toast.LENGTH_LONG).show();
+                    networkId = connectToAP(SSID, Password, false);
+                    String msg = "Conectado à rede " + SSID + " com sucesso!";
+                    if (networkId < 0) {
+                        boolean found = false;
+                        for (ScanResult sc : listWifiNetworks()) {
+                            if (sc.SSID.equals(SSID)) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) {
+                            msg = "Não foi possível conectar à rede " + SSID + "...";
+                        } else {
+                            msg = "A rede " + SSID + " está fora de alcance no momento...";
+                        }
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show();
                 }
             }
         };
